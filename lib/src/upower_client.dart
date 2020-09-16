@@ -95,6 +95,8 @@ class UPowerDeviceStatisticsRecord {
 class UPowerDevice extends DBusRemoteObject {
   final _properties = <String, DBusValue>{};
   StreamSubscription _propertiesChangedSubscription;
+  final _propertiesChangedController =
+      StreamController<List<String>>.broadcast();
 
   /// OS specific native path of this power source.
   String get nativePath => (_properties['NativePath'] as DBusString).value;
@@ -190,6 +192,10 @@ class UPowerDevice extends DBusRemoteObject {
   /// An icon to show for this device.
   String get iconName => (_properties['IconName'] as DBusString).value;
 
+  /// Stream of property names as they change.
+  Stream<List<String>> get propertiesChanged =>
+      _propertiesChangedController.stream;
+
   UPowerDevice(DBusClient systemBus, DBusObjectPath path)
       : super(systemBus, 'org.freedesktop.UPower', path);
 
@@ -206,6 +212,7 @@ class UPowerDevice extends DBusRemoteObject {
 
   void _updateProperties(Map<String, DBusValue> properties) {
     _properties.addAll(properties);
+    _propertiesChangedController.add(properties.keys.toList());
   }
 
   void _close() {
@@ -265,9 +272,13 @@ class UPowerDevice extends DBusRemoteObject {
 class UPowerClient extends DBusRemoteObject {
   final _properties = <String, DBusValue>{};
   StreamSubscription _propertiesChangedSubscription;
+  final _propertiesChangedController =
+      StreamController<List<String>>.broadcast();
   final _devices = <DBusObjectPath, UPowerDevice>{};
   StreamSubscription _deviceAddedSubscription;
+  final _deviceAddedController = StreamController<UPowerDevice>.broadcast();
   StreamSubscription _deviceRemovedSubscription;
+  final _deviceRemovedController = StreamController<UPowerDevice>.broadcast();
   UPowerDevice _displayDevice;
 
   /// The version of the UPower daemon.
@@ -288,6 +299,16 @@ class UPowerClient extends DBusRemoteObject {
 
   /// Composite device to get the overall system state.
   UPowerDevice get displayDevice => _displayDevice;
+
+  /// Stream of devices as they are added.
+  Stream<UPowerDevice> get deviceAdded => _deviceAddedController.stream;
+
+  /// Stream of devices as they are removed.
+  Stream<UPowerDevice> get deviceRemoved => _deviceRemovedController.stream;
+
+  /// Stream of property names as they change.
+  Stream<List<String>> get propertiesChanged =>
+      _propertiesChangedController.stream;
 
   /// Creates a new UPower client connected to the system D-Bus.
   UPowerClient(DBusClient systemBus)
@@ -352,6 +373,7 @@ class UPowerClient extends DBusRemoteObject {
 
   void _updateProperties(Map<String, DBusValue> properties) {
     _properties.addAll(properties);
+    _propertiesChangedController.add(properties.keys.toList());
   }
 
   Future<List<DBusObjectPath>> _enumerateDevices() async {
@@ -367,9 +389,15 @@ class UPowerClient extends DBusRemoteObject {
     var device = UPowerDevice(client, path);
     await device._connect();
     _devices[path] = device;
+    _deviceAddedController.add(device);
   }
 
   void _deviceRemoved(DBusObjectPath path) async {
+    var device = _devices[path];
+    if (device == null) {
+      return;
+    }
     _devices.remove(path);
+    _deviceRemovedController.add(device);
   }
 }
