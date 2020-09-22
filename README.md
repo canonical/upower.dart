@@ -18,3 +18,7 @@ for (var device in client.devices) {
 client.close();
 await systemBus.close();
 ```
+
+## Contributing to upower.dart
+
+We welcome contributions! See the [contribution guide](CONTRIBUTING.md) for more details.
