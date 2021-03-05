@@ -200,8 +200,8 @@ class UPowerDevice extends DBusRemoteObject {
       : super(systemBus, 'org.freedesktop.UPower', path);
 
   /// Connects to the UPower daemon.
-  Future _connect() async {
-    var changedSignals = await subscribePropertiesChanged();
+  Future<void> _connect() async {
+    var changedSignals = subscribePropertiesChanged();
     _propertiesChangedSubscription = changedSignals.listen((signal) {
       if (signal.propertiesInterface == 'org.freedesktop.UPower.Device') {
         _updateProperties(signal.changedProperties);
@@ -316,8 +316,8 @@ class UPowerClient extends DBusRemoteObject {
             DBusObjectPath('/org/freedesktop/UPower'));
 
   /// Connects to the UPower daemon.
-  Future connect() async {
-    var changedSignals = await subscribePropertiesChanged();
+  Future<void> connect() async {
+    var changedSignals = subscribePropertiesChanged();
     _propertiesChangedSubscription = changedSignals.listen((signal) {
       if (signal.propertiesInterface == 'org.freedesktop.UPower') {
         _updateProperties(signal.changedProperties);
@@ -325,12 +325,11 @@ class UPowerClient extends DBusRemoteObject {
     });
     _updateProperties(await getAllProperties('org.freedesktop.UPower'));
 
-    var addedSignals =
-        await subscribeSignal('org.freedesktop.UPower', 'DeviceAdded');
+    var addedSignals = subscribeSignal('org.freedesktop.UPower', 'DeviceAdded');
     _deviceAddedSubscription = addedSignals
         .listen((signal) => _deviceAdded((signal.values[0] as DBusObjectPath)));
     var removedSignals =
-        await subscribeSignal('org.freedesktop.UPower', 'DeviceRemoved');
+        subscribeSignal('org.freedesktop.UPower', 'DeviceRemoved');
     _deviceRemovedSubscription = removedSignals.listen(
         (signal) => _deviceRemoved((signal.values[0] as DBusObjectPath)));
 
@@ -385,14 +384,14 @@ class UPowerClient extends DBusRemoteObject {
         .toList();
   }
 
-  void _deviceAdded(DBusObjectPath path) async {
+  Future<void> _deviceAdded(DBusObjectPath path) async {
     var device = UPowerDevice(client, path);
     await device._connect();
     _devices[path] = device;
     _deviceAddedController.add(device);
   }
 
-  void _deviceRemoved(DBusObjectPath path) async {
+  void _deviceRemoved(DBusObjectPath path) {
     var device = _devices[path];
     if (device == null) {
       return;
