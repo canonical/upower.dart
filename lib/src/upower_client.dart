@@ -73,7 +73,7 @@ class UPowerDeviceHistoryRecord {
 
   @override
   String toString() =>
-      'UPowerDeviceHistoryRecord(time: ${time}, value: ${value}, state: ${state})';
+      'UPowerDeviceHistoryRecord(time: $time, value: $value, state: $state)';
 }
 
 /// A statistic sample point of a device.
@@ -88,7 +88,7 @@ class UPowerDeviceStatisticsRecord {
 
   @override
   String toString() =>
-      'UPowerDeviceHistoryRecord(value: ${value}, accuracy: ${accuracy})';
+      'UPowerDeviceHistoryRecord(value: $value, accuracy: $accuracy)';
 }
 
 /// A device being managed by UPower.
@@ -265,7 +265,7 @@ class UPowerDevice extends DBusRemoteObject {
   }
 
   @override
-  String toString() => 'UpowerDevice(type: ${type})';
+  String toString() => 'UpowerDevice(type: $type)';
 }
 
 /// A client that connects to UPower.
