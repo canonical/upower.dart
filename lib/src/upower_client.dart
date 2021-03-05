@@ -94,7 +94,7 @@ class UPowerDeviceStatisticsRecord {
 /// A device being managed by UPower.
 class UPowerDevice extends DBusRemoteObject {
   final _properties = <String, DBusValue>{};
-  StreamSubscription _propertiesChangedSubscription;
+  StreamSubscription? _propertiesChangedSubscription;
   final _propertiesChangedController =
       StreamController<List<String>>.broadcast();
 
@@ -217,13 +217,13 @@ class UPowerDevice extends DBusRemoteObject {
 
   void _close() {
     if (_propertiesChangedSubscription != null) {
-      _propertiesChangedSubscription.cancel();
+      _propertiesChangedSubscription!.cancel();
       _propertiesChangedSubscription = null;
     }
   }
 
   /// Refreshes properties of this device.
-  Future refresh() async {
+  Future<void> refresh() async {
     await callMethod('org.freedesktop.UPower.Device', 'Refresh', []);
   }
 
@@ -271,15 +271,15 @@ class UPowerDevice extends DBusRemoteObject {
 /// A client that connects to UPower.
 class UPowerClient extends DBusRemoteObject {
   final _properties = <String, DBusValue>{};
-  StreamSubscription _propertiesChangedSubscription;
+  StreamSubscription? _propertiesChangedSubscription;
   final _propertiesChangedController =
       StreamController<List<String>>.broadcast();
   final _devices = <DBusObjectPath, UPowerDevice>{};
-  StreamSubscription _deviceAddedSubscription;
+  StreamSubscription? _deviceAddedSubscription;
   final _deviceAddedController = StreamController<UPowerDevice>.broadcast();
-  StreamSubscription _deviceRemovedSubscription;
+  StreamSubscription? _deviceRemovedSubscription;
   final _deviceRemovedController = StreamController<UPowerDevice>.broadcast();
-  UPowerDevice _displayDevice;
+  final UPowerDevice _displayDevice;
 
   /// The version of the UPower daemon.
   String get daemonVersion =>
@@ -312,7 +312,9 @@ class UPowerClient extends DBusRemoteObject {
 
   /// Creates a new UPower client connected to the system D-Bus.
   UPowerClient(DBusClient systemBus)
-      : super(systemBus, 'org.freedesktop.UPower',
+      : _displayDevice = UPowerDevice(systemBus,
+            DBusObjectPath('/org/freedesktop/UPower/devices/DisplayDevice')),
+        super(systemBus, 'org.freedesktop.UPower',
             DBusObjectPath('/org/freedesktop/UPower'));
 
   /// Connects to the UPower daemon.
@@ -338,8 +340,6 @@ class UPowerClient extends DBusRemoteObject {
       await _deviceAdded(path);
     }
 
-    _displayDevice = UPowerDevice(client,
-        DBusObjectPath('/org/freedesktop/UPower/devices/DisplayDevice'));
     await _displayDevice._connect();
   }
 
@@ -357,15 +357,15 @@ class UPowerClient extends DBusRemoteObject {
       device._close();
     }
     if (_propertiesChangedSubscription != null) {
-      _propertiesChangedSubscription.cancel();
+      _propertiesChangedSubscription!.cancel();
       _propertiesChangedSubscription = null;
     }
     if (_deviceAddedSubscription != null) {
-      _deviceAddedSubscription.cancel();
+      _deviceAddedSubscription!.cancel();
       _deviceAddedSubscription = null;
     }
     if (_deviceRemovedSubscription != null) {
-      _deviceRemovedSubscription.cancel();
+      _deviceRemovedSubscription!.cancel();
       _deviceRemovedSubscription = null;
     }
   }
