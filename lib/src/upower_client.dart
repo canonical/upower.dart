@@ -215,9 +215,9 @@ class UPowerDevice extends DBusRemoteObject {
     _propertiesChangedController.add(properties.keys.toList());
   }
 
-  void _close() {
+  Future<void> _close() async {
     if (_propertiesChangedSubscription != null) {
-      _propertiesChangedSubscription!.cancel();
+      await _propertiesChangedSubscription!.cancel();
       _propertiesChangedSubscription = null;
     }
   }
@@ -269,17 +269,29 @@ class UPowerDevice extends DBusRemoteObject {
 }
 
 /// A client that connects to UPower.
-class UPowerClient extends DBusRemoteObject {
+class UPowerClient {
+  /// The bus this client is connected to.
+  final DBusClient _bus;
+  final bool _closeBus;
+
+  /// The root D-Bus UPower object.
+  late final DBusRemoteObject _root;
+
+  /// The D-Bus UPower object for display.
+  late final UPowerDevice _displayDevice;
+
+  /// Caches property values.
   final _properties = <String, DBusValue>{};
   StreamSubscription? _propertiesChangedSubscription;
   final _propertiesChangedController =
       StreamController<List<String>>.broadcast();
+
+  /// Devices.
   final _devices = <DBusObjectPath, UPowerDevice>{};
   StreamSubscription? _deviceAddedSubscription;
   final _deviceAddedController = StreamController<UPowerDevice>.broadcast();
   StreamSubscription? _deviceRemovedSubscription;
   final _deviceRemovedController = StreamController<UPowerDevice>.broadcast();
-  final UPowerDevice _displayDevice;
 
   /// The version of the UPower daemon.
   String get daemonVersion =>
@@ -311,27 +323,31 @@ class UPowerClient extends DBusRemoteObject {
       _propertiesChangedController.stream;
 
   /// Creates a new UPower client connected to the system D-Bus.
-  UPowerClient(DBusClient systemBus)
-      : _displayDevice = UPowerDevice(systemBus,
-            DBusObjectPath('/org/freedesktop/UPower/devices/DisplayDevice')),
-        super(systemBus, 'org.freedesktop.UPower',
-            DBusObjectPath('/org/freedesktop/UPower'));
+  UPowerClient({DBusClient? bus})
+      : _bus = bus ?? DBusClient.system(),
+        _closeBus = bus == null {
+    _root = DBusRemoteObject(_bus, 'org.freedesktop.UPower',
+        DBusObjectPath('/org/freedesktop/UPower'));
+    _displayDevice = UPowerDevice(
+        _bus, DBusObjectPath('/org/freedesktop/UPower/devices/DisplayDevice'));
+  }
 
   /// Connects to the UPower daemon.
   Future<void> connect() async {
-    var changedSignals = subscribePropertiesChanged();
+    var changedSignals = _root.subscribePropertiesChanged();
     _propertiesChangedSubscription = changedSignals.listen((signal) {
       if (signal.propertiesInterface == 'org.freedesktop.UPower') {
         _updateProperties(signal.changedProperties);
       }
     });
-    _updateProperties(await getAllProperties('org.freedesktop.UPower'));
+    _updateProperties(await _root.getAllProperties('org.freedesktop.UPower'));
 
-    var addedSignals = subscribeSignal('org.freedesktop.UPower', 'DeviceAdded');
+    var addedSignals =
+        _root.subscribeSignal('org.freedesktop.UPower', 'DeviceAdded');
     _deviceAddedSubscription = addedSignals
         .listen((signal) => _deviceAdded((signal.values[0] as DBusObjectPath)));
     var removedSignals =
-        subscribeSignal('org.freedesktop.UPower', 'DeviceRemoved');
+        _root.subscribeSignal('org.freedesktop.UPower', 'DeviceRemoved');
     _deviceRemovedSubscription = removedSignals.listen(
         (signal) => _deviceRemoved((signal.values[0] as DBusObjectPath)));
 
@@ -345,28 +361,31 @@ class UPowerClient extends DBusRemoteObject {
 
   /// Gets the action the system will take when the power supply is critical.
   Future<String> getCriticalAction() async {
-    var result =
-        await callMethod('org.freedesktop.UPower', 'GetCriticalAction', []);
+    var result = await _root
+        .callMethod('org.freedesktop.UPower', 'GetCriticalAction', []);
     return (result.returnValues[0] as DBusString).value;
   }
 
   /// Terminates the connection to the UPower daemon. If a client remains unclosed, the Dart process may not terminate.
-  void close() {
-    _displayDevice._close();
+  Future<void> close() async {
+    await _displayDevice._close();
     for (var device in devices) {
-      device._close();
+      await device._close();
     }
     if (_propertiesChangedSubscription != null) {
-      _propertiesChangedSubscription!.cancel();
+      await _propertiesChangedSubscription!.cancel();
       _propertiesChangedSubscription = null;
     }
     if (_deviceAddedSubscription != null) {
-      _deviceAddedSubscription!.cancel();
+      await _deviceAddedSubscription!.cancel();
       _deviceAddedSubscription = null;
     }
     if (_deviceRemovedSubscription != null) {
-      _deviceRemovedSubscription!.cancel();
+      await _deviceRemovedSubscription!.cancel();
       _deviceRemovedSubscription = null;
+    }
+    if (_closeBus) {
+      await _bus.close();
     }
   }
 
@@ -376,8 +395,8 @@ class UPowerClient extends DBusRemoteObject {
   }
 
   Future<List<DBusObjectPath>> _enumerateDevices() async {
-    var result =
-        await callMethod('org.freedesktop.UPower', 'EnumerateDevices', []);
+    var result = await _root
+        .callMethod('org.freedesktop.UPower', 'EnumerateDevices', []);
     return (result.returnValues[0] as DBusArray)
         .children
         .map((child) => child as DBusObjectPath)
@@ -385,7 +404,7 @@ class UPowerClient extends DBusRemoteObject {
   }
 
   Future<void> _deviceAdded(DBusObjectPath path) async {
-    var device = UPowerDevice(client, path);
+    var device = UPowerDevice(_bus, path);
     await device._connect();
     _devices[path] = device;
     _deviceAddedController.add(device);

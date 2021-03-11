@@ -1,9 +1,7 @@
-import 'package:dbus/dbus.dart';
 import 'package:upower/upower.dart';
 
 void main() async {
-  var systemBus = DBusClient.system();
-  var client = UPowerClient(systemBus);
+  var client = UPowerClient();
   await client.connect();
   client.deviceAdded.listen((device) {
     print('Device ${device.nativePath} (${device.type}) added.');
