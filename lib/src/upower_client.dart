@@ -88,7 +88,7 @@ class UPowerDeviceStatisticsRecord {
 
   @override
   String toString() =>
-      'UPowerDeviceHistoryRecord(value: $value, accuracy: $accuracy)';
+      'UPowerDeviceStatisticsRecord(value: $value, accuracy: $accuracy)';
 }
 
 /// A device being managed by UPower.
