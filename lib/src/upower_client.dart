@@ -74,6 +74,13 @@ class UPowerDeviceHistoryRecord {
   @override
   String toString() =>
       'UPowerDeviceHistoryRecord(time: $time, value: $value, state: $state)';
+
+  @override
+  bool operator ==(other) =>
+      other is UPowerDeviceHistoryRecord &&
+      other.time == time &&
+      other.value == value &&
+      other.state == state;
 }
 
 /// A statistic sample point of a device.
@@ -89,6 +96,12 @@ class UPowerDeviceStatisticsRecord {
   @override
   String toString() =>
       'UPowerDeviceStatisticsRecord(value: $value, accuracy: $accuracy)';
+
+  @override
+  bool operator ==(other) =>
+      other is UPowerDeviceStatisticsRecord &&
+      other.value == value &&
+      other.accuracy == accuracy;
 }
 
 /// A device being managed by UPower.
