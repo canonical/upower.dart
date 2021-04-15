@@ -311,7 +311,7 @@ class UPowerClient {
   bool get lidIsClosed => (_properties['LidIsClosed'] as DBusBoolean).value;
 
   /// Power devices on this system.
-  Iterable<UPowerDevice> get devices => _devices.values;
+  List<UPowerDevice> get devices => _devices.values.toList();
 
   /// Composite device to get the overall system state.
   UPowerDevice get displayDevice => _displayDevice;
