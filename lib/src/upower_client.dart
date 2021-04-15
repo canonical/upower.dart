@@ -92,7 +92,9 @@ class UPowerDeviceStatisticsRecord {
 }
 
 /// A device being managed by UPower.
-class UPowerDevice extends DBusRemoteObject {
+class UPowerDevice {
+  final DBusRemoteObject _object;
+
   final _properties = <String, DBusValue>{};
   StreamSubscription? _propertiesChangedSubscription;
   final _propertiesChangedController =
@@ -197,17 +199,17 @@ class UPowerDevice extends DBusRemoteObject {
       _propertiesChangedController.stream;
 
   UPowerDevice(DBusClient systemBus, DBusObjectPath path)
-      : super(systemBus, 'org.freedesktop.UPower', path);
+      : _object = DBusRemoteObject(systemBus, 'org.freedesktop.UPower', path);
 
   /// Connects to the UPower daemon.
   Future<void> _connect() async {
-    var changedSignals = subscribePropertiesChanged();
-    _propertiesChangedSubscription = changedSignals.listen((signal) {
+    _propertiesChangedSubscription = _object.propertiesChanged.listen((signal) {
       if (signal.propertiesInterface == 'org.freedesktop.UPower.Device') {
         _updateProperties(signal.changedProperties);
       }
     });
-    _updateProperties(await getAllProperties('org.freedesktop.UPower.Device'));
+    _updateProperties(
+        await _object.getAllProperties('org.freedesktop.UPower.Device'));
   }
 
   void _updateProperties(Map<String, DBusValue> properties) {
@@ -224,14 +226,16 @@ class UPowerDevice extends DBusRemoteObject {
 
   /// Refreshes properties of this device.
   Future<void> refresh() async {
-    await callMethod('org.freedesktop.UPower.Device', 'Refresh', []);
+    await _object.callMethod('org.freedesktop.UPower.Device', 'Refresh', []);
   }
 
   /// Gets history of [type] ('rate' or 'charge').
   Future<List<UPowerDeviceHistoryRecord>> getHistory(
       String type, int resolution,
       {int timespan = 0}) async {
-    var result = await callMethod('org.freedesktop.UPower.Device', 'GetHistory',
+    var result = await _object.callMethod(
+        'org.freedesktop.UPower.Device',
+        'GetHistory',
         [DBusString(type), DBusUint32(timespan), DBusUint32(resolution)]);
     var records = <UPowerDeviceHistoryRecord>[];
     var children = (result.returnValues[0] as DBusArray)
@@ -249,7 +253,7 @@ class UPowerDevice extends DBusRemoteObject {
 
   /// Gets statistics on this device of [type] ('charging', 'discharging').
   Future<List<UPowerDeviceStatisticsRecord>> getStatistics(String type) async {
-    var result = await callMethod(
+    var result = await _object.callMethod(
         'org.freedesktop.UPower.Device', 'GetStatistics', [DBusString(type)]);
     var records = <UPowerDeviceStatisticsRecord>[];
     var children = (result.returnValues[0] as DBusArray)
@@ -334,21 +338,20 @@ class UPowerClient {
 
   /// Connects to the UPower daemon.
   Future<void> connect() async {
-    var changedSignals = _root.subscribePropertiesChanged();
-    _propertiesChangedSubscription = changedSignals.listen((signal) {
+    _propertiesChangedSubscription = _root.propertiesChanged.listen((signal) {
       if (signal.propertiesInterface == 'org.freedesktop.UPower') {
         _updateProperties(signal.changedProperties);
       }
     });
     _updateProperties(await _root.getAllProperties('org.freedesktop.UPower'));
 
-    var addedSignals =
-        _root.subscribeSignal('org.freedesktop.UPower', 'DeviceAdded');
-    _deviceAddedSubscription = addedSignals
+    var deviceAdded = DBusRemoteObjectSignalStream(
+        _root, 'org.freedesktop.UPower', 'DeviceAdded');
+    _deviceAddedSubscription = deviceAdded
         .listen((signal) => _deviceAdded((signal.values[0] as DBusObjectPath)));
-    var removedSignals =
-        _root.subscribeSignal('org.freedesktop.UPower', 'DeviceRemoved');
-    _deviceRemovedSubscription = removedSignals.listen(
+    var deviceRemoved = DBusRemoteObjectSignalStream(
+        _root, 'org.freedesktop.UPower', 'DeviceRemoved');
+    _deviceRemovedSubscription = deviceRemoved.listen(
         (signal) => _deviceRemoved((signal.values[0] as DBusObjectPath)));
 
     var devicePaths = await _enumerateDevices();
