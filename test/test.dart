@@ -4,6 +4,32 @@ import 'package:dbus/dbus.dart';
 import 'package:test/test.dart';
 import 'package:upower/upower.dart';
 
+class MockUPowerKbdBacklight extends DBusObject {
+  final MockUPowerServer server;
+
+  MockUPowerKbdBacklight(this.server)
+      : super(DBusObjectPath('/org/freedesktop/UPower/KbdBacklight'));
+
+  @override
+  Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
+    if (methodCall.interface != 'org.freedesktop.UPower.KbdBacklight') {
+      return DBusMethodErrorResponse.unknownInterface();
+    }
+
+    switch (methodCall.name) {
+      case 'GetBrightness':
+        return DBusMethodSuccessResponse([DBusInt32(server.kbdBrightness)]);
+      case 'GetMaxBrightness':
+        return DBusMethodSuccessResponse([DBusInt32(server.kbdMaxBrightness)]);
+      case 'SetBrightness':
+        server.kbdBrightness = (methodCall.values[0] as DBusInt32).value;
+        return DBusMethodSuccessResponse([]);
+      default:
+        return DBusMethodErrorResponse.unknownMethod();
+    }
+  }
+}
+
 class MockUPowerObject extends DBusObject {
   final MockUPowerServer server;
 
@@ -213,6 +239,7 @@ class MockUPowerDevice extends DBusObject {
 class MockUPowerServer extends DBusClient {
   late final MockUPowerObject _root;
   final devices = <MockUPowerDevice>[];
+  late final MockUPowerKbdBacklight kbdBacklight;
 
   final bool lidIsClosed;
   final bool lidIsPresent;
@@ -220,13 +247,19 @@ class MockUPowerServer extends DBusClient {
   final String daemonVersion;
   final String criticalAction;
 
-  MockUPowerServer(DBusAddress clientAddress,
-      {this.lidIsClosed = false,
-      this.lidIsPresent = false,
-      this.onBattery = false,
-      this.daemonVersion = '',
-      this.criticalAction = ''})
-      : super(clientAddress);
+  int kbdBrightness;
+  final int kbdMaxBrightness;
+
+  MockUPowerServer(
+    DBusAddress clientAddress, {
+    this.criticalAction = '',
+    this.daemonVersion = '',
+    this.lidIsClosed = false,
+    this.lidIsPresent = false,
+    this.kbdBrightness = 0,
+    this.kbdMaxBrightness = 0,
+    this.onBattery = false,
+  }) : super(clientAddress);
 
   Future<void> start() async {
     await requestName('org.freedesktop.UPower');
@@ -235,6 +268,9 @@ class MockUPowerServer extends DBusClient {
 
     var displayDevice = MockUPowerDevice('DisplayDevice');
     await registerObject(displayDevice);
+
+    kbdBacklight = MockUPowerKbdBacklight(this);
+    await registerObject(kbdBacklight);
   }
 
   Future<MockUPowerDevice> addDevice(String name,
@@ -310,6 +346,16 @@ class MockUPowerServer extends DBusClient {
   void removeDevice(MockUPowerDevice device) {
     devices.remove(device);
     _root.emitSignal('org.freedesktop.UPower', 'DeviceRemoved', [device.path]);
+  }
+
+  void setKbdBrightness(int brightness, String source) {
+    kbdBrightness = brightness;
+    kbdBacklight.emitSignal('org.freedesktop.UPower.KbdBacklight',
+        'BrightnessChanged', [DBusInt32(brightness)]);
+    kbdBacklight.emitSignal(
+        'org.freedesktop.UPower.KbdBacklight',
+        'BrightnessChangedWithSource',
+        [DBusInt32(brightness), DBusString(source)]);
   }
 }
 
@@ -611,5 +657,48 @@ void main() {
     expect(d.refreshed, isTrue);
 
     await client.close();
+  });
+
+  test('kbd brightness', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var upower =
+        MockUPowerServer(clientAddress, kbdBrightness: 1, kbdMaxBrightness: 2);
+    await upower.start();
+
+    var client = UPowerClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(await client.kbdBacklight.getBrightness(), equals(1));
+    expect(await client.kbdBacklight.getMaxBrightness(), equals(2));
+    await client.kbdBacklight.setBrightness(2);
+    expect(await client.kbdBacklight.getBrightness(), equals(2));
+
+    await client.close();
+  });
+
+  test('kbd brightness changed', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var upower =
+        MockUPowerServer(clientAddress, kbdBrightness: 1, kbdMaxBrightness: 2);
+    await upower.start();
+
+    var client = UPowerClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    client.kbdBacklight.brightnessChanged.listen(expectAsync1((brightness) {
+      expect(brightness, equals(2));
+    }));
+    client.kbdBacklight.brightnessChangedWithSource
+        .listen(expectAsync1((change) {
+      expect(change.brightness, equals(2));
+      expect(change.source, equals(UPowerKbdBacklightChangeSource.internal));
+    }));
+    upower.setKbdBrightness(2, 'internal');
   });
 }

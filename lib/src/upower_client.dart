@@ -285,6 +285,80 @@ class UPowerDevice {
   String toString() => 'UpowerDevice(type: $type)';
 }
 
+/// A source of changes to keyboard backlight brightness.
+/// [external] if triggered by calling the D-Bus API.
+/// [internal] if triggered by the hardware.
+enum UPowerKbdBacklightChangeSource { external, internal }
+
+/// Contains updates on keyboard backlight.
+class UPowerKbdBacklightChange {
+  /// The current keyboard backlight brightness.
+  final int brightness;
+
+  /// The source of the change.
+  final UPowerKbdBacklightChangeSource source;
+
+  const UPowerKbdBacklightChange(this.brightness, this.source);
+}
+
+/// Keyboard backlight settings
+class UPowerKbdBacklight {
+  final DBusRemoteObject _object;
+
+  late final DBusRemoteObjectSignalStream _brightnessChanged;
+  late final DBusRemoteObjectSignalStream _brightnessChangedWithSource;
+
+  Stream<int> get brightnessChanged =>
+      _brightnessChanged.map((signal) => (signal.values[0] as DBusInt32).value);
+
+  Stream<UPowerKbdBacklightChange> get brightnessChangedWithSource =>
+      _brightnessChangedWithSource.map((signal) => UPowerKbdBacklightChange(
+          (signal.values[0] as DBusInt32).value,
+          {
+            'external': UPowerKbdBacklightChangeSource.external,
+            'internal': UPowerKbdBacklightChangeSource.internal
+          }[(signal.values[1] as DBusString).value]!));
+
+  UPowerKbdBacklight(DBusClient bus)
+      : _object = DBusRemoteObject(bus, 'org.freedesktop.UPower',
+            DBusObjectPath('/org/freedesktop/UPower/KbdBacklight')) {
+    _brightnessChanged = DBusRemoteObjectSignalStream(
+        _object, 'org.freedesktop.UPower.KbdBacklight', 'BrightnessChanged');
+    _brightnessChangedWithSource = DBusRemoteObjectSignalStream(_object,
+        'org.freedesktop.UPower.KbdBacklight', 'BrightnessChangedWithSource');
+  }
+
+  /// Get the current keyboard backlight brightness level.
+  Future<int> getBrightness() async {
+    var result = await _object
+        .callMethod('org.freedesktop.UPower.KbdBacklight', 'GetBrightness', []);
+    if (result.signature != DBusSignature('i')) {
+      throw 'org.freedesktop.UPower.KbdBacklight.GetBrightness returned invalid result: ${result.returnValues}';
+    }
+    return (result.returnValues[0] as DBusInt32).value;
+  }
+
+  /// Get the maximum keyboard backlight brightness level.
+  Future<int> getMaxBrightness() async {
+    var result = await _object.callMethod(
+        'org.freedesktop.UPower.KbdBacklight', 'GetMaxBrightness', []);
+    if (result.signature != DBusSignature('i')) {
+      throw 'org.freedesktop.UPower.KbdBacklight.GetMaxBrightness returned invalid result: ${result.returnValues}';
+    }
+    return (result.returnValues[0] as DBusInt32).value;
+  }
+
+  /// Set the keyboard backlight brightness level.
+  /// The value is between 0 (off) and the value returned in [getMaxBrightness].
+  Future<void> setBrightness(int brightness) async {
+    var result = await _object.callMethod('org.freedesktop.UPower.KbdBacklight',
+        'SetBrightness', [DBusInt32(brightness)]);
+    if (result.signature != DBusSignature('')) {
+      throw 'org.freedesktop.UPower.KbdBacklight.SetBrightness returned invalid result: ${result.returnValues}';
+    }
+  }
+}
+
 /// A client that connects to UPower.
 class UPowerClient {
   /// The bus this client is connected to.
@@ -296,6 +370,9 @@ class UPowerClient {
 
   /// The D-Bus UPower object for display.
   late final UPowerDevice _displayDevice;
+
+  /// The D-Bus UPower object for keyboard backlight.
+  late final UPowerKbdBacklight kbdBacklight;
 
   /// Caches property values.
   final _properties = <String, DBusValue>{};
@@ -347,6 +424,7 @@ class UPowerClient {
         DBusObjectPath('/org/freedesktop/UPower'));
     _displayDevice = UPowerDevice(
         _bus, DBusObjectPath('/org/freedesktop/UPower/devices/DisplayDevice'));
+    kbdBacklight = UPowerKbdBacklight(_bus);
   }
 
   /// Connects to the UPower daemon.
