@@ -57,8 +57,7 @@ class MockUPowerObject extends DBusObject {
     switch (methodCall.name) {
       case 'EnumerateDevices':
         return DBusMethodSuccessResponse([
-          DBusArray(
-              DBusSignature('o'), server.devices.map((device) => device.path))
+          DBusArray.objectPath(server.devices.map((device) => device.path))
         ]);
       case 'GetCriticalAction':
         return DBusMethodSuccessResponse([DBusString(server.criticalAction)]);
