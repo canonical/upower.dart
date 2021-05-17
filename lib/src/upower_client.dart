@@ -239,7 +239,8 @@ class UPowerDevice {
 
   /// Refreshes properties of this device.
   Future<void> refresh() async {
-    await _object.callMethod('org.freedesktop.UPower.Device', 'Refresh', []);
+    await _object.callMethod('org.freedesktop.UPower.Device', 'Refresh', [],
+        replySignature: DBusSignature(''));
   }
 
   /// Gets history of [type] ('rate' or 'charge').
@@ -249,7 +250,8 @@ class UPowerDevice {
     var result = await _object.callMethod(
         'org.freedesktop.UPower.Device',
         'GetHistory',
-        [DBusString(type), DBusUint32(timespan), DBusUint32(resolution)]);
+        [DBusString(type), DBusUint32(timespan), DBusUint32(resolution)],
+        replySignature: DBusSignature('a(udu)'));
     var records = <UPowerDeviceHistoryRecord>[];
     var children = (result.returnValues[0] as DBusArray)
         .children
@@ -267,7 +269,8 @@ class UPowerDevice {
   /// Gets statistics on this device of [type] ('charging', 'discharging').
   Future<List<UPowerDeviceStatisticsRecord>> getStatistics(String type) async {
     var result = await _object.callMethod(
-        'org.freedesktop.UPower.Device', 'GetStatistics', [DBusString(type)]);
+        'org.freedesktop.UPower.Device', 'GetStatistics', [DBusString(type)],
+        replySignature: DBusSignature('a(dd)'));
     var records = <UPowerDeviceStatisticsRecord>[];
     var children = (result.returnValues[0] as DBusArray)
         .children
@@ -330,32 +333,26 @@ class UPowerKbdBacklight {
 
   /// Get the current keyboard backlight brightness level.
   Future<int> getBrightness() async {
-    var result = await _object
-        .callMethod('org.freedesktop.UPower.KbdBacklight', 'GetBrightness', []);
-    if (result.signature != DBusSignature('i')) {
-      throw 'org.freedesktop.UPower.KbdBacklight.GetBrightness returned invalid result: ${result.returnValues}';
-    }
+    var result = await _object.callMethod(
+        'org.freedesktop.UPower.KbdBacklight', 'GetBrightness', [],
+        replySignature: DBusSignature('i'));
     return (result.returnValues[0] as DBusInt32).value;
   }
 
   /// Get the maximum keyboard backlight brightness level.
   Future<int> getMaxBrightness() async {
     var result = await _object.callMethod(
-        'org.freedesktop.UPower.KbdBacklight', 'GetMaxBrightness', []);
-    if (result.signature != DBusSignature('i')) {
-      throw 'org.freedesktop.UPower.KbdBacklight.GetMaxBrightness returned invalid result: ${result.returnValues}';
-    }
+        'org.freedesktop.UPower.KbdBacklight', 'GetMaxBrightness', [],
+        replySignature: DBusSignature('i'));
     return (result.returnValues[0] as DBusInt32).value;
   }
 
   /// Set the keyboard backlight brightness level.
   /// The value is between 0 (off) and the value returned in [getMaxBrightness].
   Future<void> setBrightness(int brightness) async {
-    var result = await _object.callMethod('org.freedesktop.UPower.KbdBacklight',
-        'SetBrightness', [DBusInt32(brightness)]);
-    if (result.signature != DBusSignature('')) {
-      throw 'org.freedesktop.UPower.KbdBacklight.SetBrightness returned invalid result: ${result.returnValues}';
-    }
+    await _object.callMethod('org.freedesktop.UPower.KbdBacklight',
+        'SetBrightness', [DBusInt32(brightness)],
+        replySignature: DBusSignature(''));
   }
 }
 
@@ -455,8 +452,9 @@ class UPowerClient {
 
   /// Gets the action the system will take when the power supply is critical.
   Future<String> getCriticalAction() async {
-    var result = await _root
-        .callMethod('org.freedesktop.UPower', 'GetCriticalAction', []);
+    var result = await _root.callMethod(
+        'org.freedesktop.UPower', 'GetCriticalAction', [],
+        replySignature: DBusSignature('s'));
     return (result.returnValues[0] as DBusString).value;
   }
 
@@ -489,8 +487,9 @@ class UPowerClient {
   }
 
   Future<List<DBusObjectPath>> _enumerateDevices() async {
-    var result = await _root
-        .callMethod('org.freedesktop.UPower', 'EnumerateDevices', []);
+    var result = await _root.callMethod(
+        'org.freedesktop.UPower', 'EnumerateDevices', [],
+        replySignature: DBusSignature('ao'));
     return (result.returnValues[0] as DBusArray)
         .children
         .map((child) => child as DBusObjectPath)
