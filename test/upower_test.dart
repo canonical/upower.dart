@@ -338,7 +338,8 @@ class MockUPowerServer extends DBusClient {
         statistics: statistics);
     await registerObject(device);
     devices.add(device);
-    _root.emitSignal('org.freedesktop.UPower', 'DeviceAdded', [device.path]);
+    await _root
+        .emitSignal('org.freedesktop.UPower', 'DeviceAdded', [device.path]);
     return device;
   }
 

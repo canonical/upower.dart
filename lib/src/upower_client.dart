@@ -212,7 +212,8 @@ class UPowerDevice {
       _propertiesChangedController.stream;
 
   UPowerDevice(DBusClient systemBus, DBusObjectPath path)
-      : _object = DBusRemoteObject(systemBus, 'org.freedesktop.UPower', path);
+      : _object = DBusRemoteObject(systemBus,
+            name: 'org.freedesktop.UPower', path: path);
 
   /// Connects to the UPower daemon.
   Future<void> _connect() async {
@@ -323,12 +324,17 @@ class UPowerKbdBacklight {
           }[(signal.values[1] as DBusString).value]!));
 
   UPowerKbdBacklight(DBusClient bus)
-      : _object = DBusRemoteObject(bus, 'org.freedesktop.UPower',
-            DBusObjectPath('/org/freedesktop/UPower/KbdBacklight')) {
+      : _object = DBusRemoteObject(bus,
+            name: 'org.freedesktop.UPower',
+            path: DBusObjectPath('/org/freedesktop/UPower/KbdBacklight')) {
     _brightnessChanged = DBusRemoteObjectSignalStream(
-        _object, 'org.freedesktop.UPower.KbdBacklight', 'BrightnessChanged');
-    _brightnessChangedWithSource = DBusRemoteObjectSignalStream(_object,
-        'org.freedesktop.UPower.KbdBacklight', 'BrightnessChangedWithSource');
+        object: _object,
+        interface: 'org.freedesktop.UPower.KbdBacklight',
+        name: 'BrightnessChanged');
+    _brightnessChangedWithSource = DBusRemoteObjectSignalStream(
+        object: _object,
+        interface: 'org.freedesktop.UPower.KbdBacklight',
+        name: 'BrightnessChangedWithSource');
   }
 
   /// Get the current keyboard backlight brightness level.
@@ -417,8 +423,9 @@ class UPowerClient {
   UPowerClient({DBusClient? bus})
       : _bus = bus ?? DBusClient.system(),
         _closeBus = bus == null {
-    _root = DBusRemoteObject(_bus, 'org.freedesktop.UPower',
-        DBusObjectPath('/org/freedesktop/UPower'));
+    _root = DBusRemoteObject(_bus,
+        name: 'org.freedesktop.UPower',
+        path: DBusObjectPath('/org/freedesktop/UPower'));
     _displayDevice = UPowerDevice(
         _bus, DBusObjectPath('/org/freedesktop/UPower/devices/DisplayDevice'));
     kbdBacklight = UPowerKbdBacklight(_bus);
@@ -434,11 +441,15 @@ class UPowerClient {
     _updateProperties(await _root.getAllProperties('org.freedesktop.UPower'));
 
     var deviceAdded = DBusRemoteObjectSignalStream(
-        _root, 'org.freedesktop.UPower', 'DeviceAdded');
+        object: _root,
+        interface: 'org.freedesktop.UPower',
+        name: 'DeviceAdded');
     _deviceAddedSubscription = deviceAdded
         .listen((signal) => _deviceAdded((signal.values[0] as DBusObjectPath)));
     var deviceRemoved = DBusRemoteObjectSignalStream(
-        _root, 'org.freedesktop.UPower', 'DeviceRemoved');
+        object: _root,
+        interface: 'org.freedesktop.UPower',
+        name: 'DeviceRemoved');
     _deviceRemovedSubscription = deviceRemoved.listen(
         (signal) => _deviceRemoved((signal.values[0] as DBusObjectPath)));
 
