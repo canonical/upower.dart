@@ -362,117 +362,126 @@ class MockUPowerServer extends DBusClient {
 void main() {
   test('daemon version', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress, daemonVersion: '1.2.3');
+    addTearDown(() async => await upower.close());
     await upower.start();
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.daemonVersion, equals('1.2.3'));
-
-    await client.close();
   });
 
   test('lid is closed', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower =
         MockUPowerServer(clientAddress, lidIsPresent: true, lidIsClosed: true);
+    addTearDown(() async => await upower.close());
     await upower.start();
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.lidIsPresent, isTrue);
     expect(client.lidIsClosed, isTrue);
-
-    await client.close();
   });
 
   test('on battery', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress, onBattery: true);
+    addTearDown(() async => await upower.close());
     await upower.start();
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.onBattery, isTrue);
-
-    await client.close();
   });
 
   test('critical action', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress, criticalAction: 'PowerOff');
+    addTearDown(() async => await upower.close());
     await upower.start();
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(await client.getCriticalAction(), equals('PowerOff'));
-
-    await client.close();
   });
 
   test('no devices', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress);
+    addTearDown(() async => await upower.close());
     await upower.start();
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.devices, isEmpty);
-
-    await client.close();
   });
 
   test('devices', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress);
+    addTearDown(() async => await upower.close());
     await upower.start();
     await upower.addDevice('battery_BAT0', serial: 'SERIAL1');
     await upower.addDevice('battery_BAT1', serial: 'SERIAL2');
     await upower.addDevice('line_power', serial: 'SERIAL3');
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.devices, hasLength(3));
     expect(client.devices[0].serial, equals('SERIAL1'));
     expect(client.devices[1].serial, equals('SERIAL2'));
     expect(client.devices[2].serial, equals('SERIAL3'));
-
-    await client.close();
   });
 
   test('device added', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress);
+    addTearDown(() async => await upower.close());
     await upower.start();
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     client.deviceAdded.listen(expectAsync1((device) {
@@ -484,14 +493,17 @@ void main() {
 
   test('device removed', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress);
+    addTearDown(() async => await upower.close());
     await upower.start();
     var d = await upower.addDevice('battery_BAT0', serial: 'SERIAL');
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     client.deviceRemoved.listen(expectAsync1((device) {
@@ -503,10 +515,12 @@ void main() {
 
   test('device properties', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress);
+    addTearDown(() async => await upower.close());
     await upower.start();
     await upower.addDevice('battery_BAT0',
         batteryLevel: 5,
@@ -539,6 +553,7 @@ void main() {
         warningLevel: 2);
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.devices, hasLength(1));
@@ -571,16 +586,16 @@ void main() {
     expect(device.vendor, equals('VENDOR'));
     expect(device.voltage, equals(12.2));
     expect(device.warningLevel, equals(UPowerDeviceWarningLevel.discharging));
-
-    await client.close();
   });
 
   test('device history', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress);
+    addTearDown(() async => await upower.close());
     await upower.start();
     await upower.addDevice('battery_BAT0', history: {
       'charge': [
@@ -595,6 +610,7 @@ void main() {
     });
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.devices, hasLength(1));
@@ -607,22 +623,23 @@ void main() {
           UPowerDeviceHistoryRecord(4, 80, UPowerDeviceState.discharging),
           UPowerDeviceHistoryRecord(6, 0, UPowerDeviceState.empty)
         ]));
-
-    await client.close();
   });
 
   test('device statistics', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress);
+    addTearDown(() async => await upower.close());
     await upower.start();
     await upower.addDevice('battery_BAT0', statistics: {
       'charging': [StatEntry(1, 0.1), StatEntry(2, 0.1), StatEntry(3, 0.1)]
     });
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.devices, hasLength(1));
@@ -634,20 +651,21 @@ void main() {
           UPowerDeviceStatisticsRecord(2.0, 0.1),
           UPowerDeviceStatisticsRecord(3.0, 0.1)
         ]));
-
-    await client.close();
   });
 
   test('refresh', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower = MockUPowerServer(clientAddress);
+    addTearDown(() async => await upower.close());
     await upower.start();
     var d = await upower.addDevice('battery_BAT0');
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.devices, hasLength(1));
@@ -655,40 +673,42 @@ void main() {
     expect(d.refreshed, isFalse);
     await device.refresh();
     expect(d.refreshed, isTrue);
-
-    await client.close();
   });
 
   test('kbd brightness', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower =
         MockUPowerServer(clientAddress, kbdBrightness: 1, kbdMaxBrightness: 2);
+    addTearDown(() async => await upower.close());
     await upower.start();
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(await client.kbdBacklight.getBrightness(), equals(1));
     expect(await client.kbdBacklight.getMaxBrightness(), equals(2));
     await client.kbdBacklight.setBrightness(2);
     expect(await client.kbdBacklight.getBrightness(), equals(2));
-
-    await client.close();
   });
 
   test('kbd brightness changed', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var upower =
         MockUPowerServer(clientAddress, kbdBrightness: 1, kbdMaxBrightness: 2);
+    addTearDown(() async => await upower.close());
     await upower.start();
 
     var client = UPowerClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     client.kbdBacklight.brightnessChanged.listen(expectAsync1((brightness) {
