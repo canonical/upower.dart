@@ -392,16 +392,19 @@ class UPowerClient {
 
   /// The version of the UPower daemon.
   String get daemonVersion =>
-      (_properties['DaemonVersion'] as DBusString).value;
+      (_properties['DaemonVersion'] as DBusString?)?.value ?? '';
 
   /// True if currently being powered by battery.
-  bool get onBattery => (_properties['OnBattery'] as DBusBoolean).value;
+  bool get onBattery =>
+      (_properties['OnBattery'] as DBusBoolean?)?.value ?? false;
 
   /// True if a lid is present (e.g. on a laptop).
-  bool get lidIsPresent => (_properties['LidIsPresent'] as DBusBoolean).value;
+  bool get lidIsPresent =>
+      (_properties['LidIsPresent'] as DBusBoolean?)?.value ?? false;
 
   /// True if the lid is closed.
-  bool get lidIsClosed => (_properties['LidIsClosed'] as DBusBoolean).value;
+  bool get lidIsClosed =>
+      (_properties['LidIsClosed'] as DBusBoolean?)?.value ?? false;
 
   /// Power devices on this system.
   List<UPowerDevice> get devices => _devices.values.toList();
