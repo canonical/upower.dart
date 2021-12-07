@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+
+* Make connect() a no-op when already connected.
+* Guard against null property access.
+
 ## 0.6.0
 
 * Update to dbus 0.6.
