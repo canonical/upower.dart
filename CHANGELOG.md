@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2
+
+* Only list as supporting Linux.
+
 ## 0.6.1
 
 * Make connect() a no-op when already connected.

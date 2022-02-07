@@ -1,5 +1,5 @@
 name: upower
-version: 0.6.1
+version: 0.6.2
 
 description:
   Provides a client to connect to UPower - the service that does power management on Linux.
