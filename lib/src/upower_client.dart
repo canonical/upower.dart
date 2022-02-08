@@ -81,6 +81,9 @@ class UPowerDeviceHistoryRecord {
       other.time == time &&
       other.value == value &&
       other.state == state;
+
+  @override
+  int get hashCode => time.hashCode | value.hashCode | state.hashCode;
 }
 
 /// A statistic sample point of a device.
@@ -102,6 +105,9 @@ class UPowerDeviceStatisticsRecord {
       other is UPowerDeviceStatisticsRecord &&
       other.value == value &&
       other.accuracy == accuracy;
+
+  @override
+  int get hashCode => value.hashCode | accuracy.hashCode;
 }
 
 /// A device being managed by UPower.
