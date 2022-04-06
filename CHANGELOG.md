@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0
+
+* Update to dbus 0.7.
+* Use Object.hash for hashCode calculations.
+
 ## 0.6.2
 
 * Only list as supporting Linux.
