@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0
+
+* Update to dbus 0.8.
+* Require Dart 3.
+
 ## 0.7.0
 
 * Update to dbus 0.7.
